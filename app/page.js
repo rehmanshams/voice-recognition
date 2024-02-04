@@ -1,10 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { recognition } from "../src/components/voice-recognition";
 export default function Home() {
   const [checkVoice, setCheckVoice] = useState(false);
   const [saveText, setSaveText] = useState("");
+  const [recognition, setRecognition] = useState(null);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.webkitSpeechRecognition) {
+      const SpeechRecognition = window.webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      setRecognition(recognitionInstance);
+    }
+  }, []);
   const voiceHandler = () => {
     if (checkVoice === false && recognition) {
       setCheckVoice(true);
@@ -15,8 +22,10 @@ export default function Home() {
       };
     } else {
       setCheckVoice(false);
+      recognition && recognition.stop();
     }
   };
+
   return (
     <div className="flex justify-center items-center w-full h-[100vh]">
       <div className="flex flex-col space-y-4 items-center w-full justify-center">
