@@ -60,14 +60,23 @@ export default function Home() {
   return (
     <div className="flex justify-center items-center w-full h-[100vh]">
       <div className="flex flex-col space-y-10 items-center w-fit rounded justify-center">
-        {saveText ? (
-          <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
-            <p className="text-white text-xl md:text-2xl">{saveText}</p>
-          </div>
-        ) : (
-          <p className="text-white text-xl md:text-2xl"> </p>
-        )}
-
+        <div className="flex flex-col space-y-6 lg:flex-row lg:space-y-0 lg:space-x-6 items-center">
+          {saveText ? (
+            <div className="w-full lg:w-fit bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4 h-[103px] text-center flex items-center">
+              <p className="text-white text-xl md:text-2xl">{saveText}</p>
+            </div>
+          ) : (
+            <p className="text-white text-xl md:text-2xl"> </p>
+          )}
+          {audioUrl && (
+            <div className="w-full lg:w-fit flex bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4 items-center justify-center">
+              <audio controls>
+                <source src={audioUrl} type="audio/mpeg" />
+                Your browser does not support the audio
+              </audio>
+            </div>
+          )}
+        </div>
         {checkVoice === false ? (
           <div
             onClick={voiceHandler}
@@ -91,14 +100,6 @@ export default function Home() {
               height={32}
               alt="open voice icon"
             />
-          </div>
-        )}
-        {audioUrl && (
-          <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
-            <audio controls>
-              <source src={audioUrl} type="audio/mpeg" />
-              Your browser does not support the audio
-            </audio>
           </div>
         )}
       </div>
