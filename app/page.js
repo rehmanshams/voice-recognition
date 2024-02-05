@@ -2,64 +2,116 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 export default function Home() {
+  const [recorder, setRecorder] = useState(null);
+  const [audioUrl, setAudioUrl] = useState("");
+
+  // Initialize recorder
+  const initRecorder = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      let audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, {
+          type: "audio/wav; codecs=opus",
+        });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+        // Reset audioChunks for next recording
+        audioChunks = [];
+      };
+
+      setRecorder(mediaRecorder);
+    } catch (error) {
+      console.error("Error accessing the microphone: ", error);
+    }
+  };
+  useEffect(() => {
+    initRecorder();
+  }, []);
+
+  let recognitionVariable;
+
+  if (typeof window !== "undefined") {
+    const SpeechRecognition =
+      window.webkitSpeechRecognition || window.SpeechRecognition;
+
+    recognitionVariable = new SpeechRecognition();
+  }
   const [checkVoice, setCheckVoice] = useState(false);
   const [saveText, setSaveText] = useState("");
-  const [recognition, setRecognition] = useState(null);
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.webkitSpeechRecognition) {
-      const SpeechRecognition = window.webkitSpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
-      setRecognition(recognitionInstance);
-    }
-  }, []);
   const voiceHandler = () => {
-    if (checkVoice === false && recognition) {
+    if (recorder && recorder.state === "inactive") {
       setCheckVoice(true);
-      recognition.start();
-      recognition.onresult = (event) => {
+      setAudioUrl("");
+      recorder.start();
+      recognitionVariable.start();
+
+      recognitionVariable.onresult = (event) => {
         const result = event.results[0][0].transcript;
         setSaveText(result);
+        if (result.length > 0) {
+          setCheckVoice(false);
+        } else {
+          setCheckVoice(false);
+          recorder.stop();
+        }
+        console.log(result.length, "get length");
       };
-    } else {
-      setCheckVoice(false);
-      recognition && recognition.stop();
+    } else if (recorder && recorder.state === "recording") {
+      recorder.stop();
     }
   };
 
   return (
     <div className="flex justify-center items-center w-full h-[100vh]">
-      <div className="flex flex-col space-y-4 items-center w-full justify-center">
-        <div>
+      <div className="flex flex-col space-y-10 items-center w-fit rounded justify-center">
+        <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
           {saveText ? (
-            <p className="text-white text-2xl">{saveText}</p>
+            <p className="text-white text-xl md:text-2xl">{saveText}</p>
           ) : (
-            <p className="text-white text-2xl"> </p>
+            <p className="text-white text-xl md:text-2xl">
+              {" "}
+              Click on the Button Given Below
+            </p>
           )}
         </div>
 
         {checkVoice === false ? (
           <div
             onClick={voiceHandler}
-            className="bg-green-500 hover:opacity-90 transition-all ease-in-out duration-300 w-[150px] h-[150px] rounded-full flex items-center justify-center cursor-pointer"
+            className="bg-green-500 hover:opacity-90 transition-all ease-in-out duration-300 p-6 rounded-full flex items-center justify-center cursor-pointer"
           >
             <Image
               src="/openVoice.svg"
-              width={64}
-              height={64}
+              width={32}
+              height={32}
               alt="open voice icon"
             />
           </div>
         ) : (
           <div
             onClick={voiceHandler}
-            className="bg-red-500 hover:opacity-90 transition-all ease-in-out duration-300 w-[150px] h-[150px] rounded-full flex items-center justify-center cursor-pointer"
+            className="bg-red-500 hover:opacity-90 transition-all ease-in-out duration-300 p-6 rounded-full flex items-center justify-center cursor-pointer"
           >
             <Image
               src="/closeVoice.svg"
-              width={64}
-              height={64}
+              width={32}
+              height={32}
               alt="open voice icon"
             />
+          </div>
+        )}
+        {audioUrl && (
+          <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
+            <audio controls src={audioUrl}>
+              Your browser does not support the audio element.
+            </audio>
           </div>
         )}
       </div>
