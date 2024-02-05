@@ -1,118 +1,102 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
+
 export default function Home() {
-  const [recorder, setRecorder] = useState(null);
   const [audioUrl, setAudioUrl] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const recorderRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  // Initialize recorder
-  const initRecorder = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      let audioChunks = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, {
-          type: "audio/wav; codecs=opus",
-        });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-        // Reset audioChunks for next recording
-        audioChunks = [];
-      };
-
-      setRecorder(mediaRecorder);
-    } catch (error) {
-      console.error("Error accessing the microphone: ", error);
-    }
-  };
-  useEffect(() => {
-    initRecorder();
-  }, []);
-
-  let recognitionVariable;
-
-  if (typeof window !== "undefined") {
-    const SpeechRecognition =
-      window.webkitSpeechRecognition || window.SpeechRecognition;
-
-    recognitionVariable = new SpeechRecognition();
-  }
-  const [checkVoice, setCheckVoice] = useState(false);
-  const [saveText, setSaveText] = useState("");
-  const voiceHandler = () => {
-    if (recorder && recorder.state === "inactive") {
-      setCheckVoice(true);
+  const startRecording = () => {
+    if (recorderRef.current && recognitionRef.current) {
       setAudioUrl("");
-      recorder.start();
-      recognitionVariable.start();
-
-      recognitionVariable.onresult = (event) => {
-        const result = event.results[0][0].transcript;
-        setSaveText(result);
-        if (result.length > 0) {
-          setCheckVoice(false);
-        } else {
-          setCheckVoice(false);
-          recorder.stop();
-        }
-        console.log(result.length, "get length");
-      };
-    } else if (recorder && recorder.state === "recording") {
-      recorder.stop();
+      setTranscript("");
+      recorderRef.current.start();
+      recognitionRef.current.start();
+      setIsRecording(true);
+    } else {
+      console.error("Recorder or recognition not initialized.");
     }
   };
+
+  const stopRecording = () => {
+    if (recorderRef.current && recognitionRef.current) {
+      recorderRef.current.stop();
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else {
+      console.error("Recorder or recognition not initialized.");
+    }
+  };
+
+  const handleRecordingToggle = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => {
+          const audioBlob = new Blob([e.data], {
+            type: "audio/wav; codecs=opus",
+          });
+          setAudioUrl(URL.createObjectURL(audioBlob));
+        };
+        recorderRef.current = mediaRecorder;
+
+        if (
+          "SpeechRecognition" in window ||
+          "webkitSpeechRecognition" in window
+        ) {
+          const SpeechRecognition =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+          const speechRecognition = new SpeechRecognition();
+          speechRecognition.onresult = (event) =>
+            setTranscript(event.results[0][0].transcript);
+          recognitionRef.current = speechRecognition;
+        }
+      } catch (error) {
+        console.error("Error accessing the microphone:", error);
+      }
+    }
+    init();
+  }, []);
 
   return (
     <div className="flex justify-center items-center w-full h-[100vh]">
       <div className="flex flex-col space-y-10 items-center w-fit rounded justify-center">
-        <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
-          {saveText ? (
-            <p className="text-white text-xl md:text-2xl">{saveText}</p>
-          ) : (
-            <p className="text-white text-xl md:text-2xl">
-              {" "}
-              Click on the Button Given Below
-            </p>
-          )}
-        </div>
-
-        {checkVoice === false ? (
-          <div
-            onClick={voiceHandler}
-            className="bg-green-500 hover:opacity-90 transition-all ease-in-out duration-300 p-6 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            <Image
-              src="/openVoice.svg"
-              width={32}
-              height={32}
-              alt="open voice icon"
-            />
-          </div>
-        ) : (
-          <div
-            onClick={voiceHandler}
-            className="bg-red-500 hover:opacity-90 transition-all ease-in-out duration-300 p-6 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            <Image
-              src="/closeVoice.svg"
-              width={32}
-              height={32}
-              alt="open voice icon"
-            />
-          </div>
+        {transcript && (
+          <p className="bg-zinc-900 border-zinc-800 border py-6 px-4 rounded text-white text-xl">
+            {transcript}
+          </p>
         )}
+        <button
+          onClick={handleRecordingToggle}
+          className={`p-6 rounded-full flex items-center justify-center cursor-pointer bg-${
+            isRecording ? "red" : "green"
+          }-500 hover:opacity-90 transition duration-300`}
+        >
+          <Image
+            src={`/${isRecording ? "close" : "open"}Voice.svg`}
+            width={32}
+            height={32}
+            alt="voice icon"
+          />
+        </button>
         {audioUrl && (
-          <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
-            <audio controls src={audioUrl}>
-              Your browser does not support the audio element.
-            </audio>
-          </div>
+          <audio controls src={audioUrl}>
+            Your browser does not support the audio element.
+          </audio>
         )}
       </div>
     </div>
