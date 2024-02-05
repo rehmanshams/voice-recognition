@@ -96,7 +96,7 @@ export default function Home() {
         {audioUrl && (
           <div className="bg-zinc-900 border-zinc-800 border py-6 px-4 md:px-10 rounded mx-4">
             <audio controls src={audioUrl}>
-              Your browser does not support the audio element.
+              Your browser does not support the audio 
             </audio>
           </div>
         )}
